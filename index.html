@@ -1,168 +1,118 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="ja">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>BRAIN TAP</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>順序 (SEQUENCE)</title>
     <style>
-        body { margin: 0; overflow: hidden; background-color: #f0f0f0; font-family: 'Arial Black', sans-serif; touch-action: none; user-select: none; }
-        #ui { height: 60px; background: #222; color: white; display: flex; align-items: center; justify-content: space-around; font-size: 1.4rem; font-weight: bold; z-index: 1000; position: relative; }
-        #game-area { position: relative; width: 100vw; height: calc(100vh - 60px); }
-        .number-btn { position: absolute; display: flex; align-items: center; justify-content: center; cursor: pointer; font-weight: 900; border: 3px solid #000; box-shadow: 4px 4px 12px rgba(0,0,0,0.4); transform-origin: center; }
-        #menu { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); background: white; padding: 30px; border-radius: 20px; box-shadow: 0 0 30px rgba(0,0,0,0.3); text-align: center; z-index: 2000; width: 85%; max-width: 350px; }
-        .menu-btn { display: block; width: 100%; padding: 22px; margin: 15px 0; font-size: 1.8rem; cursor: pointer; border: none; border-radius: 12px; color: white; font-weight: 900; letter-spacing: 2px; }
-        
-        .btn-easy { background: #FF6B6B; } 
-        .btn-normal { background: #45B7D1; } 
-        .btn-hard { background: #786FA6; }
-        
-        u { text-decoration: underline; text-underline-offset: 4px; }
-
-        /* 結果表示の色分け */
-        #result-screen {
-            display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%;
-            background: rgba(0,0,0,0.9); z-index: 3000;
-            flex-direction: column; align-items: center; justify-content: center; text-align: center;
+        body {
+            font-family: 'Helvetica Neue', Arial, sans-serif;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+            margin: 0;
+            background-color: #f0f2f5;
         }
-        #result-comment { font-size: 2.2rem; font-weight: 900; margin-bottom: 20px; padding: 0 20px; line-height: 1.2; }
-        #result-time { font-size: 2rem; color: white; margin-bottom: 30px; }
-        #tap-to-next { font-size: 1.2rem; color: #fff; border: 2px solid #fff; padding: 10px 30px; border-radius: 30px; }
-
-        /* 判定ごとの文字色 */
-        .color-gold { color: #FFD93D; text-shadow: 0 0 15px rgba(255,217,61,0.6); } /* 新記録 */
-        .color-white { color: #FFFFFF; } /* 惜しい */
-        .color-red { color: #FF4D4D; }   /* まだまだ */
+        h1 { color: #1c1e21; }
+        .menu { margin-bottom: 20px; }
+        button {
+            padding: 10px 20px;
+            font-size: 16px;
+            cursor: pointer;
+            margin: 5px;
+            border: none;
+            border-radius: 5px;
+            transition: background-color 0.3s;
+        }
+        .btn-easy { background-color: #4caf50; color: white; }
+        .btn-normal { background-color: #2196f3; color: white; }
+        .btn-hard { background-color: #f44336; color: white; }
+        button:hover { opacity: 0.8; }
+        #game-board {
+            display: grid;
+            gap: 10px;
+            background: white;
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+        }
+        .number-btn {
+            width: 60px;
+            height: 60px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background-color: #e4e6eb;
+            color: #1c1e21;
+            font-size: 20px;
+            font-weight: bold;
+            border-radius: 8px;
+            cursor: pointer;
+            user-select: none;
+        }
+        .number-btn.clicked {
+            visibility: hidden;
+        }
+        .footer-link {
+            margin-top: 30px;
+            font-size: 12px;
+        }
+        .footer-link a {
+            color: #65676b;
+            text-decoration: none;
+        }
     </style>
 </head>
 <body>
 
-<div id="ui">
-    <div id="target">NEXT: -</div>
-    <div id="timer">0.00s</div>
-</div>
-
-<div id="result-screen" onclick="closeResult()">
-    <div id="result-comment"></div>
-    <div id="result-time"></div>
-    <div id="tap-to-next">OK</div>
-</div>
-
-<div id="menu">
-    <h2 id="menu-title" style="margin-top:0;">SELECT MODE</h2>
-    <div id="best-score" style="margin-bottom:10px; color:#666; font-size:0.9rem; font-weight: bold;"></div>
-    <button class="menu-btn btn-easy" onclick="initGame(10, true, false, 'EASY')">EASY</button>
-    <button class="menu-btn btn-normal" onclick="initGame(20, false, false, 'NORMAL')">NORMAL</button>
-    <button class="menu-btn btn-hard" onclick="initGame(20, false, true, 'HARD')">HARD</button>
-</div>
-
-<div id="game-area"></div>
-
-<script>
-    const gameArea = document.getElementById('game-area');
-    const targetDisplay = document.getElementById('target');
-    const timerDisplay = document.getElementById('timer');
-    const menu = document.getElementById('menu');
-    const menuTitle = document.getElementById('menu-title');
-    const bestDisplay = document.getElementById('best-score');
-    const resultScreen = document.getElementById('result-screen');
-    const resultComment = document.getElementById('result-comment');
-    const resultTimeDisplay = document.getElementById('result-time');
+    <h1>順序 (SEQUENCE)</h1>
     
-    let currentNum = 1, maxNum = 20, startTime, timerInterval, currentMode = '';
+    <div class="menu">
+        <button class="btn-easy" onclick="startGame(9, 3)">EASY</button>
+        <button class="btn-normal" onclick="startGame(16, 4)">NORMAL</button>
+        <button class="btn-hard" onclick="startGame(25, 5)">HARD</button>
+    </div>
 
-    function getRandomColor() {
-        const colors = ['#FFD93D', '#6BCB77', '#4D96FF', '#FF6B6B', '#98D8C8', '#F7D794'];
-        return colors[Math.floor(Math.random() * colors.length)];
-    }
+    <div id="game-board"></div>
 
-    function initGame(count, isEasy, isMania, modeName) {
-        maxNum = count; currentMode = modeName;
-        menu.style.display = 'none'; resultScreen.style.display = 'none';
-        startGame(isEasy, isMania);
-    }
+    <div class="footer-link">
+        <a href="privacy.html">プライバシーポリシー</a>
+    </div>
 
-    function startGame(isEasy, isMania) {
-        gameArea.innerHTML = ''; currentNum = 1;
-        targetDisplay.innerText = "NEXT: 1"; timerDisplay.innerText = "0.00s";
-        const padding = 80;
+    <script>
+        let currentNumber = 1;
+        let totalNumbers = 0;
 
-        for (let i = 1; i <= maxNum; i++) {
-            const btn = document.createElement('div');
-            btn.className = 'number-btn'; btn.id = 'btn-' + i;
-            if (i === 6 || i === 9) { btn.innerHTML = `<u>${i}</u>`; } else { btn.innerText = i; }
-            
-            const baseSize = isEasy ? 110 : 65;
-            const size = Math.floor(Math.random() * 30) + baseSize; 
-            btn.style.width = size + 'px'; btn.style.height = size + 'px';
-            btn.style.fontSize = (size * 0.45) + 'px'; btn.style.backgroundColor = getRandomColor();
-            btn.style.zIndex = (maxNum + 1) - i;
+        function startGame(count, grid) {
+            const board = document.getElementById('game-board');
+            board.innerHTML = '';
+            board.style.gridTemplateColumns = `repeat(${grid}, 1fr)`;
+            currentNumber = 1;
+            totalNumbers = count;
 
-            if (isMania) {
-                const shapeType = Math.floor(Math.random() * 3);
-                btn.style.borderRadius = shapeType === 0 ? '50%' : shapeType === 1 ? '8px' : '30% 70% 70% 30% / 30% 30% 70% 70%';
-                btn.style.transform = `translate(-50%, -50%) rotate(${Math.random() * 360 - 180}deg)`;
-            } else {
-                btn.style.borderRadius = '50%'; btn.style.transform = `translate(-50%, -50%)`;
-            }
+            let numbers = Array.from({length: count}, (_, i) => i + 1);
+            numbers.sort(() => Math.random() - 0.5);
 
-            const x = padding + Math.random() * (window.innerWidth - padding * 2);
-            const y = padding + Math.random() * (gameArea.offsetHeight - padding * 2);
-            btn.style.left = x + 'px'; btn.style.top = y + 'px';
+            numbers.forEach(num => {
+                const btn = document.createElement('div');
+                btn.className = 'number-btn';
+                btn.textContent = num;
+                btn.onclick = () => clickNumber(num, btn);
+                board.appendChild(btn);
+            });
+        }
 
-            const handlePress = (e) => {
-                e.preventDefault();
-                if (i === currentNum) {
-                    if (window.navigator.vibrate) window.navigator.vibrate(25);
-                    if (currentNum === 1) { startTime = Date.now(); startTimer(); }
-                    btn.style.visibility = 'hidden'; currentNum++;
-                    if (currentNum > maxNum) { clearInterval(timerInterval); finishGame(); }
-                    else {
-                        targetDisplay.innerText = `NEXT: ${currentNum}`;
-                        const nextBtn = document.getElementById('btn-' + currentNum);
-                        if(nextBtn) nextBtn.style.zIndex = 101;
-                    }
+        function clickNumber(num, element) {
+            if (num === currentNumber) {
+                element.classList.add('clicked');
+                if (currentNumber === totalNumbers) {
+                    setTimeout(() => alert('クリア！おめでとうございます！'), 100);
                 }
-            };
-            btn.addEventListener('touchstart', handlePress); btn.addEventListener('mousedown', handlePress);
-            gameArea.appendChild(btn);
+                currentNumber++;
+            }
         }
-    }
-
-    function startTimer() {
-        if (timerInterval) clearInterval(timerInterval);
-        timerInterval = setInterval(() => {
-            const elapsed = (Date.now() - startTime) / 1000;
-            timerDisplay.innerText = `${elapsed.toFixed(2)}s`;
-        }, 50);
-    }
-
-    function finishGame() {
-        const finalTime = ((Date.now() - startTime) / 1000).toFixed(2);
-        const bestTime = localStorage.getItem('best_' + currentMode);
-        
-        if (!bestTime || parseFloat(finalTime) < parseFloat(bestTime)) {
-            resultComment.innerHTML = "CONGRATULATIONS!<br>NEW RECORD!";
-            resultComment.className = "color-gold";
-            localStorage.setItem('best_' + currentMode, finalTime);
-        } else if (parseFloat(finalTime) < parseFloat(bestTime) + 1.5) {
-            resultComment.innerHTML = "SO CLOSE!<br>TRY AGAIN!";
-            resultComment.className = "color-white";
-        } else {
-            resultComment.innerHTML = "KEEP TRYING!<br>DON'T MIND!";
-            resultComment.className = "color-red";
-        }
-
-        resultTimeDisplay.innerText = `TIME: ${finalTime}s`;
-        resultScreen.style.display = 'flex';
-    }
-
-    function closeResult() {
-        resultScreen.style.display = 'none';
-        menuTitle.innerText = "TRY AGAIN?";
-        const currentBest = localStorage.getItem('best_' + currentMode);
-        bestDisplay.innerText = `BEST(${currentMode}): ${currentBest}s`;
-        menu.style.display = 'block';
-    }
-</script>
+    </script>
 </body>
 </html>
