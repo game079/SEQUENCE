@@ -2,7 +2,6 @@
 <html lang="ja">
 <head>
     <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-9056811366925666" crossorigin="anonymous"></script>
-    
     <meta name="google-adsense-account" content="ca-pub-9056811366925666">
 
     <meta charset="UTF-8">
@@ -19,8 +18,16 @@
             margin: 0;
             background-color: #f0f2f5;
         }
+        /* 「お見事」とタイトルの装飾（ゴールド） */
+        .gold-text {
+            color: #d4af37;
+            text-shadow: 1px 1px 2px rgba(0,0,0,0.2);
+            font-weight: bold;
+        }
         h1 { color: #1c1e21; }
+        .info-panel { margin-bottom: 10px; font-size: 18px; font-weight: bold; color: #4b4f56; }
         .menu { margin-bottom: 20px; }
+        
         button {
             padding: 10px 20px;
             font-size: 16px;
@@ -34,6 +41,7 @@
         .btn-normal { background-color: #2196f3; color: white; }
         .btn-hard { background-color: #f44336; color: white; }
         button:hover { opacity: 0.8; }
+
         #game-board {
             display: grid;
             gap: 10px;
@@ -42,54 +50,79 @@
             border-radius: 10px;
             box-shadow: 0 4px 6px rgba(0,0,0,0.1);
         }
+
+        /* 数字ボタンのスタイル（サイズはJavaScriptで可変にします） */
         .number-btn {
-            width: 60px;
-            height: 60px;
             display: flex;
             align-items: center;
             justify-content: center;
             background-color: #e4e6eb;
             color: #1c1e21;
-            font-size: 20px;
             font-weight: bold;
             border-radius: 8px;
             cursor: pointer;
             user-select: none;
+            transition: transform 0.1s;
         }
-        .number-btn.clicked {
-            visibility: hidden;
-        }
-        .footer-link {
-            margin-top: 30px;
-            font-size: 12px;
-        }
-        .footer-link a {
-            color: #65676b;
-            text-decoration: none;
-        }
+        .number-btn:active { transform: scale(0.9); }
+        .number-btn.clicked { visibility: hidden; }
+
+        .footer-link { margin-top: 30px; font-size: 12px; }
+        .footer-link a { color: #65676b; text-decoration: none; }
     </style>
 </head>
 <body>
-    <h1>順序 (SEQUENCE)</h1>
+    <h1 id="main-title">順序 (SEQUENCE)</h1>
+    <div class="info-panel">
+        Time: <span id="timer">0.00</span>s
+    </div>
     <div class="menu">
-        <button class="btn-easy" onclick="startGame(9, 3)">EASY</button>
-        <button class="btn-normal" onclick="startGame(16, 4)">NORMAL</button>
-        <button class="btn-hard" onclick="startGame(25, 5)">HARD</button>
+        <button class="btn-easy" onclick="startGame(9, 3, 80)">EASY</button>
+        <button class="btn-normal" onclick="startGame(16, 4, 60)">NORMAL</button>
+        <button class="btn-hard" onclick="startGame(25, 5, 45)">HARD</button>
     </div>
     <div id="game-board"></div>
     <div class="footer-link">
         <a href="privacy.html">プライバシーポリシー</a>
     </div>
+
     <script>
         let currentNumber = 1;
         let totalNumbers = 0;
+        let timerInterval = null;
+        let startTime = 0;
+        const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
 
-        function startGame(count, grid) {
+        function playSound(freq, type, duration) {
+            const osc = audioCtx.createOscillator();
+            const gain = audioCtx.createGain();
+            osc.type = type;
+            osc.frequency.setValueAtTime(freq, audioCtx.currentTime);
+            gain.gain.setValueAtTime(0.1, audioCtx.currentTime);
+            gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + duration);
+            osc.connect(gain);
+            gain.connect(audioCtx.destination);
+            osc.start();
+            osc.stop(audioCtx.currentTime + duration);
+        }
+
+        function startGame(count, grid, size) {
             const board = document.getElementById('game-board');
+            const title = document.getElementById('main-title');
+            title.classList.remove('gold-text');
+            title.textContent = "順序 (SEQUENCE)";
+            
             board.innerHTML = '';
             board.style.gridTemplateColumns = `repeat(${grid}, 1fr)`;
             currentNumber = 1;
             totalNumbers = count;
+
+            clearInterval(timerInterval);
+            startTime = Date.now();
+            timerInterval = setInterval(() => {
+                const elapsed = (Date.now() - startTime) / 1000;
+                document.getElementById('timer').textContent = elapsed.toFixed(2);
+            }, 10);
 
             let numbers = Array.from({length: count}, (_, i) => i + 1);
             numbers.sort(() => Math.random() - 0.5);
@@ -98,6 +131,11 @@
                 const btn = document.createElement('div');
                 btn.className = 'number-btn';
                 btn.textContent = num;
+                // レベルに合わせてサイズを変更
+                btn.style.width = size + 'px';
+                btn.style.height = size + 'px';
+                btn.style.fontSize = (size * 0.4) + 'px';
+                
                 btn.onclick = () => clickNumber(num, btn);
                 board.appendChild(btn);
             });
@@ -105,11 +143,25 @@
 
         function clickNumber(num, element) {
             if (num === currentNumber) {
+                playSound(880, 'sine', 0.1);
                 element.classList.add('clicked');
+                
                 if (currentNumber === totalNumbers) {
-                    setTimeout(() => alert('クリア！おめでとうございます！'), 100);
+                    clearInterval(timerInterval);
+                    const title = document.getElementById('main-title');
+                    title.textContent = "お見事！";
+                    title.classList.add('gold-text');
+
+                    playSound(523.25, 'square', 0.1);
+                    setTimeout(() => playSound(659.25, 'square', 0.1), 100);
+                    setTimeout(() => playSound(783.99, 'square', 0.3), 200);
+                    
+                    const finalTime = document.getElementById('timer').textContent;
+                    setTimeout(() => alert(`クリア！タイム: ${finalTime}秒`), 500);
                 }
                 currentNumber++;
+            } else {
+                playSound(110, 'sawtooth', 0.2);
             }
         }
     </script>
